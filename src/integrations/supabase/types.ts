@@ -14,7 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      crystal_leads: {
+        Row: {
+          answers: Json
+          created_at: string
+          email: string
+          id: string
+          name: string
+          recommendations: Json
+          wants_supply: boolean | null
+        }
+        Insert: {
+          answers: Json
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          recommendations: Json
+          wants_supply?: boolean | null
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          recommendations?: Json
+          wants_supply?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,1 +1,4 @@
-project_id = "wiznrvuvuvscpmbcpnos"
+project_id = "df7437f7-1ca7-4fa2-bdad-c3cbb7d4bc7a"
+
+[functions.crystal-quiz]
+verify_jwt = false

@@ -51,15 +51,16 @@ function base64url(input: ArrayBuffer | string): string {
   return btoa(str).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-function pemToPkcs8(pem: string): Uint8Array {
+function pemToPkcs8(pem: string): ArrayBuffer {
   const body = pem
     .replace(/-----BEGIN [^-]+-----/g, "")
     .replace(/-----END [^-]+-----/g, "")
     .replace(/\s+/g, "");
   const bin = atob(body);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
+  const buf = new ArrayBuffer(bin.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+  return buf;
 }
 
 async function getAccessToken(): Promise<string> {

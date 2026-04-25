@@ -48,7 +48,10 @@ const Index = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [currentQ, setCurrentQ] = useState(0);
-  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
+  // Single-select questions store a number; multi-select store an array of indices.
+  const [answers, setAnswers] = useState<(number | number[] | null)[]>(
+    () => questions.map((q) => (q.multiSelect ? [] as number[] : null))
+  );
   const [results, setResults] = useState<Recommendation[]>([]);
   const [wantsSupply, setWantsSupply] = useState<null | boolean>(null);
 
@@ -58,20 +61,24 @@ const Index = () => {
 
   const progress = ((currentQ + 1) / questions.length) * 100;
 
-  const submit = async (finalAnswers: (number | null)[]) => {
+  const submit = async (finalAnswers: (number | number[] | null)[]) => {
     setScreen("loading");
     const payload = {
       name,
       email,
       answers: questions.map((q, i) => {
         const sel = finalAnswers[i];
-        const opt = sel != null ? q.options[sel] : null;
+        const indices: number[] = Array.isArray(sel)
+          ? sel
+          : sel != null ? [sel] : [];
+        const opts = indices.map((idx) => q.options[idx]).filter(Boolean);
         return {
           questionIndex: i,
-          optionIndex: sel,
+          optionIndex: Array.isArray(sel) ? (sel[0] ?? null) : sel,
+          optionIndices: indices,
           questionText: q.text,
-          optionText: opt?.text || "",
-          tags: (opt?.tags || []) as Tag[],
+          optionText: opts.map((o) => o.text).join(" + "),
+          tags: opts.flatMap((o) => o.tags) as Tag[],
         };
       }),
     };
@@ -87,15 +94,55 @@ const Index = () => {
     }
   };
 
-  const selectOption = (idx: number) => {
-    const next = [...answers];
-    next[currentQ] = idx;
-    setAnswers(next);
+  const advance = (next: (number | number[] | null)[]) => {
     if (currentQ < questions.length - 1) {
       setTimeout(() => setCurrentQ(currentQ + 1), 350);
     } else {
       setTimeout(() => submit(next), 350);
     }
+  };
+
+  const selectOption = (idx: number) => {
+    const q = questions[currentQ];
+    const next = [...answers];
+
+    if (q.multiSelect) {
+      const max = q.maxSelections ?? 2;
+      const current = Array.isArray(next[currentQ]) ? [...(next[currentQ] as number[])] : [];
+      const at = current.indexOf(idx);
+      if (at >= 0) {
+        current.splice(at, 1);
+      } else {
+        if (current.length >= max) {
+          toast(`You can choose up to ${max} options`);
+          return;
+        }
+        current.push(idx);
+      }
+      next[currentQ] = current;
+      setAnswers(next);
+      // Don't auto-advance for multi-select; user clicks Continue
+      return;
+    }
+
+    next[currentQ] = idx;
+    setAnswers(next);
+    advance(next);
+  };
+
+  const handleContinue = () => {
+    const q = questions[currentQ];
+    const sel = answers[currentQ];
+    if (q.multiSelect) {
+      if (!Array.isArray(sel) || sel.length === 0) {
+        toast.error("Please select at least one option");
+        return;
+      }
+    } else if (sel == null) {
+      toast.error("Please select an option");
+      return;
+    }
+    advance(answers);
   };
 
   const handleSupply = async (yes: boolean) => {
@@ -239,9 +286,15 @@ const Index = () => {
               <h2 className="mb-6 text-2xl font-light leading-snug md:text-3xl">
                 {questions[currentQ].text}
               </h2>
+              {questions[currentQ].multiSelect && (
+                <p className="-mt-4 mb-5 text-xs italic text-accent">
+                  ✨ Choose up to {questions[currentQ].maxSelections ?? 2}
+                </p>
+              )}
               <div className="space-y-3">
                 {questions[currentQ].options.map((opt, i) => {
-                  const selected = answers[currentQ] === i;
+                  const a = answers[currentQ];
+                  const selected = Array.isArray(a) ? a.includes(i) : a === i;
                   return (
                     <button
                       key={i}
@@ -260,14 +313,24 @@ const Index = () => {
                       <span className="text-2xl">{opt.icon}</span>
                       <span className="flex-1 text-sm md:text-base">{opt.text}</span>
                       <span
-                        className={`h-4 w-4 shrink-0 rounded-full border-2 ${
-                          selected ? "border-primary bg-primary" : "border-muted-foreground/40"
-                        }`}
+                        className={`h-4 w-4 shrink-0 border-2 ${
+                          questions[currentQ].multiSelect ? "rounded-md" : "rounded-full"
+                        } ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}
                       />
                     </button>
                   );
                 })}
               </div>
+              {questions[currentQ].multiSelect && (
+                <Button
+                  onClick={handleContinue}
+                  disabled={!Array.isArray(answers[currentQ]) || (answers[currentQ] as number[]).length === 0}
+                  className="mt-5 h-12 w-full rounded-xl text-base"
+                  style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                >
+                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              )}
               <div className="mt-6 flex justify-between">
                 <Button
                   variant="ghost"

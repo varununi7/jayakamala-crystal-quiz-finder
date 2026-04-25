@@ -18,6 +18,8 @@ export type QuizOption = {
 export type QuizQuestion = {
   text: string;
   options: QuizOption[];
+  multiSelect?: boolean;
+  maxSelections?: number;
 };
 
 const f = (v: string, w = 3): Tag => ({ field: "functions", value: v, weight: w });
@@ -40,6 +42,8 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "How would you describe your emotional state lately?",
+    multiSelect: true,
+    maxSelections: 2,
     options: [
       { icon: "🌊", text: "Overwhelmed — too much, too fast", tags: [f("calm", 2), f("stress", 2), f("balance", 1)] },
       { icon: "🍃", text: "Scattered — can't concentrate", tags: [f("focus", 3), f("clarity", 2), f("grounding", 2)] },
@@ -50,6 +54,8 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "Which area of life do you most want to improve?",
+    multiSelect: true,
+    maxSelections: 2,
     options: [
       { icon: "💼", text: "Work, career & productivity", tags: [c("career", 3), c("abundance", 2), f("focus", 2), f("motivation", 2)] },
       { icon: "❤️", text: "Love, friendships & relationships", tags: [c("love", 3), c("relationships", 2), f("love", 2), ch("heart", 2)] },
@@ -69,6 +75,8 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "When stress hits, how do you typically respond?",
+    multiSelect: true,
+    maxSelections: 2,
     options: [
       { icon: "🌀", text: "I overthink everything", tags: [f("clarity", 3), f("calm", 2), ch("third eye", 1)] },
       { icon: "🐢", text: "I shut down or withdraw", tags: [f("energy", 2), f("confidence", 2), f("heart", 1)] },
@@ -98,6 +106,8 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "Which word speaks to your soul right now?",
+    multiSelect: true,
+    maxSelections: 2,
     options: [
       { icon: "🦁", text: "Strength", tags: [f("strength", 3), f("courage", 2), ch("solar", 2)] },
       { icon: "🕊️", text: "Peace", tags: [f("peace", 3), f("calm", 2), ch("crown", 1)] },

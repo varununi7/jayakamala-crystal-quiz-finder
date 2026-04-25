@@ -20,6 +20,7 @@ export type QuizQuestion = {
   options: QuizOption[];
   multiSelect?: boolean;
   maxSelections?: number;
+  skippable?: boolean;
 };
 
 const f = (v: string, w = 3): Tag => ({ field: "functions", value: v, weight: w });
@@ -66,6 +67,7 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "When do you most need crystal support?",
+    skippable: true,
     options: [
       { icon: "☀️", text: "Morning — to energise my day", tags: [f("energy", 3), f("motivation", 2)] },
       { icon: "🌙", text: "Evening — to wind down and sleep", tags: [f("sleep", 3), f("calm", 2)] },
@@ -118,6 +120,7 @@ export const questions: QuizQuestion[] = [
   },
   {
     text: "Where do you want to keep or use your crystal?",
+    skippable: true,
     options: [
       { icon: "💎", text: "Wear it as a bracelet or jewellery", tags: [c("jewellery", 3), c("jewelry", 3), c("wearable", 2)] },
       { icon: "🛏️", text: "By my bed for sleep", tags: [f("sleep", 3), f("calm", 2)] },

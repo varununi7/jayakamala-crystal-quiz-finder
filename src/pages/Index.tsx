@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Moon, Star, Gem, Mail, ArrowLeft, ArrowRight, Heart } from "lucide-react";
+import { Sparkles, Moon, Star, Gem, Mail, ArrowLeft, ArrowRight, Heart, Check } from "lucide-react";
 
 type Screen = "landing" | "capture" | "quiz" | "loading" | "results";
 
@@ -295,6 +295,7 @@ const Index = () => {
                 {questions[currentQ].options.map((opt, i) => {
                   const a = answers[currentQ];
                   const selected = Array.isArray(a) ? a.includes(i) : a === i;
+                  const isMulti = !!questions[currentQ].multiSelect;
                   return (
                     <button
                       key={i}
@@ -313,10 +314,17 @@ const Index = () => {
                       <span className="text-2xl">{opt.icon}</span>
                       <span className="flex-1 text-sm md:text-base">{opt.text}</span>
                       <span
-                        className={`h-4 w-4 shrink-0 border-2 ${
-                          questions[currentQ].multiSelect ? "rounded-md" : "rounded-full"
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${
+                          isMulti ? "rounded-md" : "rounded-full"
                         } ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}
-                      />
+                      >
+                        {selected && isMulti && (
+                          <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
+                        )}
+                        {selected && !isMulti && (
+                          <span className="h-2 w-2 rounded-full bg-primary-foreground" />
+                        )}
+                      </span>
                     </button>
                   );
                 })}
@@ -330,6 +338,19 @@ const Index = () => {
                 >
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+              )}
+              {questions[currentQ].skippable && (
+                <button
+                  onClick={() => {
+                    const next = [...answers];
+                    next[currentQ] = questions[currentQ].multiSelect ? [] : null;
+                    setAnswers(next);
+                    advance(next);
+                  }}
+                  className="mt-4 self-center text-xs text-muted-foreground underline-offset-4 hover:text-accent hover:underline"
+                >
+                  Skip this question
+                </button>
               )}
               <div className="mt-6 flex justify-between">
                 <Button

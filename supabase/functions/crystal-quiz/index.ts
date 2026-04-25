@@ -38,6 +38,93 @@ interface QuizSubmission {
 let crystalCache: { data: Crystal[]; ts: number } | null = null;
 const CACHE_MS = 5 * 60 * 1000;
 
+// ---------- Google Service Account JWT + Sheets append ----------
+
+let tokenCache: { token: string; exp: number } | null = null;
+
+function base64url(input: ArrayBuffer | string): string {
+  const bytes = typeof input === "string"
+    ? new TextEncoder().encode(input)
+    : new Uint8Array(input);
+  let str = "";
+  for (const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function pemToPkcs8(pem: string): Uint8Array {
+  const body = pem
+    .replace(/-----BEGIN [^-]+-----/g, "")
+    .replace(/-----END [^-]+-----/g, "")
+    .replace(/\s+/g, "");
+  const bin = atob(body);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+async function getAccessToken(): Promise<string> {
+  if (tokenCache && tokenCache.exp - 60 > Math.floor(Date.now() / 1000)) {
+    return tokenCache.token;
+  }
+  const raw = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON");
+  if (!raw) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_JSON");
+  const sa = JSON.parse(raw);
+  const now = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss: sa.client_email,
+    scope: "https://www.googleapis.com/auth/spreadsheets",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600,
+  };
+  const header = { alg: "RS256", typ: "JWT" };
+  const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claim))}`;
+  const keyData = pemToPkcs8(sa.private_key);
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    keyData,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(unsigned));
+  const jwt = `${unsigned}.${base64url(sig)}`;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Google token exchange failed [${res.status}]: ${t}`);
+  }
+  const json = await res.json();
+  tokenCache = { token: json.access_token, exp: now + (json.expires_in || 3600) };
+  return tokenCache.token;
+}
+
+async function appendLeadToSheet(row: (string | number)[]): Promise<void> {
+  const sheetId = Deno.env.get("LEADS_SHEET_ID");
+  const tab = Deno.env.get("LEADS_SHEET_TAB") || "Leads";
+  if (!sheetId) throw new Error("Missing LEADS_SHEET_ID");
+  const token = await getAccessToken();
+  const range = `${tab}!A:Z`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values: [row] }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Sheets append failed [${res.status}]: ${t}`);
+  }
+}
+
 async function fetchCrystals(): Promise<Crystal[]> {
   if (crystalCache && Date.now() - crystalCache.ts < CACHE_MS) {
     return crystalCache.data;
@@ -156,6 +243,19 @@ Deno.serve(async (req) => {
       answers: body.answers,
       recommendations: top3,
     });
+
+    // Append to Google Sheet (best-effort: don't fail the request if it errors)
+    try {
+      const topNames = top3.map((t) => t.name).join(", ");
+      await appendLeadToSheet([
+        new Date().toISOString(),
+        body.name,
+        body.email,
+        topNames,
+      ]);
+    } catch (sheetErr) {
+      console.error("Sheet append failed:", sheetErr instanceof Error ? sheetErr.message : sheetErr);
+    }
 
     return new Response(JSON.stringify({ recommendations: top3 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

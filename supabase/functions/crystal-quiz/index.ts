@@ -126,6 +126,51 @@ async function appendLeadToSheet(row: (string | number)[]): Promise<void> {
   }
 }
 
+// Update the "Wants Crystals" column (E) for the most recent row matching this email.
+async function updateWantsSupplyInSheet(email: string, wantsSupply: boolean): Promise<void> {
+  const sheetId = Deno.env.get("LEADS_SHEET_ID");
+  const tab = Deno.env.get("LEADS_SHEET_TAB") || "Leads";
+  if (!sheetId) throw new Error("Missing LEADS_SHEET_ID");
+  const token = await getAccessToken();
+
+  // Read column C (email) to find the row
+  const readRange = `${tab}!A:E`;
+  const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(readRange)}`;
+  const readRes = await fetch(readUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!readRes.ok) {
+    throw new Error(`Sheets read failed [${readRes.status}]: ${await readRes.text()}`);
+  }
+  const data = await readRes.json();
+  const rows: string[][] = data.values || [];
+  const target = email.toLowerCase().trim();
+  let rowIndex = -1;
+  // Iterate from bottom up to grab the latest entry
+  for (let i = rows.length - 1; i >= 1; i--) {
+    const cell = (rows[i]?.[2] || "").toLowerCase().trim();
+    if (cell === target) { rowIndex = i; break; }
+  }
+  if (rowIndex === -1) {
+    console.warn(`No matching row found for email ${email}`);
+    return;
+  }
+  const sheetRow = rowIndex + 1; // 1-indexed
+  const writeRange = `${tab}!E${sheetRow}`;
+  const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=USER_ENTERED`;
+  const writeRes = await fetch(writeUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values: [[wantsSupply ? "Yes" : "Maybe later"]] }),
+  });
+  if (!writeRes.ok) {
+    throw new Error(`Sheets update failed [${writeRes.status}]: ${await writeRes.text()}`);
+  }
+}
+
 async function fetchCrystals(): Promise<Crystal[]> {
   if (crystalCache && Date.now() - crystalCache.ts < CACHE_MS) {
     return crystalCache.data;
@@ -212,7 +257,20 @@ Deno.serve(async (req) => {
     }
 
     // submit
-    const body: QuizSubmission = await req.json();
+    const body: QuizSubmission & { _supplyOnly?: boolean; wantsSupply?: boolean } = await req.json();
+
+    // Handle the supply follow-up event (after results are shown)
+    if (body._supplyOnly && body.email) {
+      try {
+        await updateWantsSupplyInSheet(body.email, !!body.wantsSupply);
+      } catch (err) {
+        console.error("Supply update failed:", err instanceof Error ? err.message : err);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!body.email || !body.name || !Array.isArray(body.answers)) {
       return new Response(JSON.stringify({ error: "Invalid submission" }), {
         status: 400,
@@ -253,6 +311,7 @@ Deno.serve(async (req) => {
         body.name,
         body.email,
         topNames,
+        "", // Wants Crystals — filled in after the user answers the supply question
       ]);
     } catch (sheetErr) {
       console.error("Sheet append failed:", sheetErr instanceof Error ? sheetErr.message : sheetErr);

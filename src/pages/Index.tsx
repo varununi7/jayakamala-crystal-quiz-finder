@@ -497,6 +497,42 @@ const Index = () => {
                   {wantsSupply ? "💜 We'll reach out within 24 hours." : "💫 Save this page — your crystals await whenever you're ready."}
                 </p>
               )}
+
+              {results.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1 }}
+                  className="mt-6 rounded-3xl border-2 border-accent/40 p-6 text-center"
+                  style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.1))" }}
+                >
+                  <Sparkles className="mx-auto mb-2 h-6 w-6 text-accent" />
+                  <h3 className="mb-2 text-xl font-light">
+                    Want a personalised healing crystal recommendation specific to your birth chart?
+                  </h3>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Personalized to your own birth chart, hand written PDF report delivered within 48 hours straight to your inbox!
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+                    <Button
+                      asChild
+                      className="rounded-full px-6"
+                      style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                    >
+                      <a
+                        href="https://jayakamala.com/crystal-healing-consultation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        ✨ Yes, send me a personalised report
+                      </a>
+                    </Button>
+                    <Button variant="ghost" className="rounded-full" onClick={() => toast("💫 Whenever you're ready ✨")}>
+                      Maybe later
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
             </motion.section>
           )}
         </AnimatePresence>

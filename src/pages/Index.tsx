@@ -54,6 +54,7 @@ const Index = () => {
   );
   const [results, setResults] = useState<Recommendation[]>([]);
   const [wantsSupply, setWantsSupply] = useState<null | boolean>(null);
+  const [supplyNonce, setSupplyNonce] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Crystal Reading Quiz — Find Your Soul-Aligned Crystals";
@@ -86,6 +87,7 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke("crystal-quiz", { body: payload });
       if (error) throw error;
       setResults(data.recommendations || []);
+      setSupplyNonce(data.nonce || null);
       setScreen("results");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Something went wrong";
@@ -150,7 +152,7 @@ const Index = () => {
     try {
       // best-effort secondary update via insert (small follow-up event)
       await supabase.functions.invoke("crystal-quiz", {
-        body: { name, email, answers: [], _supplyOnly: true, wantsSupply: yes },
+        body: { name, email, answers: [], _supplyOnly: true, wantsSupply: yes, nonce: supplyNonce },
       }).catch(() => {});
     } catch {}
     if (yes) toast.success("✨ Wonderful! We'll be in touch within 24h.");

@@ -6,6 +6,73 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// ---------- Input sanitization & validation ----------
+
+// Prevent Google Sheets formula injection. Any cell value beginning with
+// =, +, -, or @ is treated as a formula by Sheets — prefix with a single
+// quote so it renders as plain text. Belt-and-braces alongside RAW input mode.
+function sanitizeCell(value: string | number): string {
+  const s = String(value ?? "");
+  if (/^[=+\-@]/.test(s)) return `'${s}`;
+  return s;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function validateLead(name: unknown, email: unknown): { ok: true; name: string; email: string } | { ok: false; error: string } {
+  if (typeof name !== "string" || typeof email !== "string") return { ok: false, error: "Invalid name or email" };
+  const n = name.trim();
+  const e = email.trim();
+  if (n.length === 0 || n.length > 100) return { ok: false, error: "Name must be 1-100 characters" };
+  if (e.length === 0 || e.length > 254 || !EMAIL_RE.test(e)) return { ok: false, error: "Invalid email" };
+  return { ok: true, name: n, email: e };
+}
+
+// ---------- In-memory per-IP rate limiter ----------
+// Lightweight protection against bulk lead spam. Resets when the worker recycles.
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(ip: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || bucket.resetAt < now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  bucket.count += 1;
+  return bucket.count <= limit;
+}
+function clientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  return (fwd?.split(",")[0] || req.headers.get("cf-connecting-ip") || "unknown").trim();
+}
+
+// ---------- Short-lived nonce store ----------
+// On a successful quiz submission we mint a nonce bound to the email.
+// Only that nonce can later flip the "Wants Crystals" cell for that email,
+// preventing arbitrary callers from overwriting other people's rows.
+interface NonceEntry { email: string; expiresAt: number }
+const nonces = new Map<string, NonceEntry>();
+const NONCE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function mintNonce(email: string): string {
+  // Drop expired nonces opportunistically
+  const now = Date.now();
+  if (nonces.size > 1000) {
+    for (const [k, v] of nonces) if (v.expiresAt < now) nonces.delete(k);
+  }
+  const buf = new Uint8Array(24);
+  crypto.getRandomValues(buf);
+  const nonce = Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+  nonces.set(nonce, { email: email.toLowerCase(), expiresAt: now + NONCE_TTL_MS });
+  return nonce;
+}
+function consumeNonce(nonce: string, email: string): boolean {
+  const entry = nonces.get(nonce);
+  if (!entry) return false;
+  nonces.delete(nonce); // single-use
+  if (entry.expiresAt < Date.now()) return false;
+  return entry.email === email.toLowerCase();
+}
+
 interface Crystal {
   name: string;
   functions: string;
@@ -111,14 +178,16 @@ async function appendLeadToSheet(row: (string | number)[]): Promise<void> {
   if (!sheetId) throw new Error("Missing LEADS_SHEET_ID");
   const token = await getAccessToken();
   const range = `${tab}!A:Z`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+  // RAW disables formula parsing. Combined with sanitizeCell this is defense-in-depth.
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  const safeRow = row.map(sanitizeCell);
   const res = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ values: [row] }),
+    body: JSON.stringify({ values: [safeRow] }),
   });
   if (!res.ok) {
     const t = await res.text();
@@ -157,14 +226,14 @@ async function updateWantsSupplyInSheet(email: string, wantsSupply: boolean): Pr
   }
   const sheetRow = rowIndex + 1; // 1-indexed
   const writeRange = `${tab}!E${sheetRow}`;
-  const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=USER_ENTERED`;
+  const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=RAW`;
   const writeRes = await fetch(writeUrl, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ values: [[wantsSupply ? "Yes" : "Maybe later"]] }),
+    body: JSON.stringify({ values: [[sanitizeCell(wantsSupply ? "Yes" : "Maybe later")]] }),
   });
   if (!writeRes.ok) {
     throw new Error(`Sheets update failed [${writeRes.status}]: ${await writeRes.text()}`);
@@ -248,8 +317,15 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get("action") || "submit";
+    const ip = clientIp(req);
 
     if (action === "list") {
+      // Light rate limit on the public crystal listing
+      if (!rateLimit(`list:${ip}`, 30, 60_000)) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const crystals = await fetchCrystals();
       return new Response(JSON.stringify({ crystals }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -257,12 +333,31 @@ Deno.serve(async (req) => {
     }
 
     // submit
-    const body: QuizSubmission & { _supplyOnly?: boolean; wantsSupply?: boolean } = await req.json();
+    const body: QuizSubmission & { _supplyOnly?: boolean; wantsSupply?: boolean; nonce?: string } = await req.json();
 
     // Handle the supply follow-up event (after results are shown)
     if (body._supplyOnly && body.email) {
+      // Rate limit follow-up writes
+      if (!rateLimit(`supply:${ip}`, 10, 60_000)) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Require a valid, single-use, email-bound nonce so callers cannot
+      // overwrite arbitrary emails' "Wants Crystals" column.
+      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email)) {
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const v = validateLead("placeholder", body.email);
+      if (!v.ok) {
+        return new Response(JSON.stringify({ error: "Invalid email" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       try {
-        await updateWantsSupplyInSheet(body.email, !!body.wantsSupply);
+        await updateWantsSupplyInSheet(v.email, !!body.wantsSupply);
       } catch (err) {
         console.error("Supply update failed:", err instanceof Error ? err.message : err);
       }
@@ -271,12 +366,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!body.email || !body.name || !Array.isArray(body.answers)) {
+    // Rate limit submissions
+    if (!rateLimit(`submit:${ip}`, 5, 60_000)) {
+      return new Response(JSON.stringify({ error: "Too many requests" }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const v = validateLead(body.name, body.email);
+    if (!v.ok || !Array.isArray(body.answers) || body.answers.length > 50) {
       return new Response(JSON.stringify({ error: "Invalid submission" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const safeName = v.name;
+    const safeEmail = v.email;
 
     const crystals = await fetchCrystals();
     const allTags = body.answers.flatMap((a) => a.tags);
@@ -297,8 +402,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
     await supabase.from("crystal_leads").insert({
-      name: body.name,
-      email: body.email,
+      name: safeName,
+      email: safeEmail,
       answers: body.answers,
       recommendations: top3,
     });
@@ -308,8 +413,8 @@ Deno.serve(async (req) => {
       const topNames = top3.map((t) => t.name).join(", ");
       await appendLeadToSheet([
         new Date().toISOString(),
-        body.name,
-        body.email,
+        safeName,
+        safeEmail,
         topNames,
         "", // Wants Crystals — filled in after the user answers the supply question
       ]);
@@ -317,13 +422,19 @@ Deno.serve(async (req) => {
       console.error("Sheet append failed:", sheetErr instanceof Error ? sheetErr.message : sheetErr);
     }
 
-    return new Response(JSON.stringify({ recommendations: top3 }), {
+    // Mint a single-use, email-bound nonce so the client can later record the
+    // user's "Wants Crystals" choice for THIS email only.
+    const nonce = mintNonce(safeEmail);
+
+    return new Response(JSON.stringify({ recommendations: top3, nonce }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    // Log full detail server-side; return generic message to clients to avoid
+    // leaking Sheet IDs, OAuth bodies, or env-var names in error responses.
     console.error("crystal-quiz error:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({ error: "An internal error occurred. Please try again." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -55,6 +55,7 @@ const Index = () => {
   const [results, setResults] = useState<Recommendation[]>([]);
   const [wantsSupply, setWantsSupply] = useState<null | boolean>(null);
   const [supplyNonce, setSupplyNonce] = useState<string | null>(null);
+  const [wantsReport, setWantsReport] = useState<null | boolean>(null);
 
   useEffect(() => {
     document.title = "Crystal Reading Quiz — Find Your Soul-Aligned Crystals";
@@ -157,6 +158,17 @@ const Index = () => {
     } catch {}
     if (yes) toast.success("✨ Wonderful! We'll be in touch within 24h.");
     else toast("Thanks for taking the reading 💜");
+  };
+
+  const handleReport = async (yes: boolean) => {
+    setWantsReport(yes);
+    try {
+      await supabase.functions.invoke("crystal-quiz", {
+        body: { name, email, answers: [], _reportOnly: true, wantsReport: yes, nonce: supplyNonce },
+      }).catch(() => {});
+    } catch {}
+    if (yes) toast.success("✨ Beautiful! Your personalised report will arrive within 48h.");
+    else toast("Whenever you're ready 💫");
   };
 
   return (
@@ -500,7 +512,7 @@ const Index = () => {
                 </p>
               )}
 
-              {results.length > 0 && (
+              {results.length > 0 && wantsReport === null && (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -518,6 +530,7 @@ const Index = () => {
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                     <Button
                       asChild
+                      onClick={() => handleReport(true)}
                       className="rounded-full px-6"
                       style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
                     >
@@ -529,11 +542,17 @@ const Index = () => {
                         ✨ Yes, send me a personalised report
                       </a>
                     </Button>
-                    <Button variant="ghost" className="rounded-full" onClick={() => toast("💫 Whenever you're ready ✨")}>
+                    <Button variant="ghost" className="rounded-full" onClick={() => handleReport(false)}>
                       Maybe later
                     </Button>
                   </div>
                 </motion.div>
+              )}
+
+              {wantsReport !== null && (
+                <p className="mt-6 text-center text-sm text-muted-foreground">
+                  {wantsReport ? "💜 Your personalised birth-chart report is on its way (within 48h)." : "💫 The personalised report is here whenever you're ready."}
+                </p>
               )}
             </motion.section>
           )}

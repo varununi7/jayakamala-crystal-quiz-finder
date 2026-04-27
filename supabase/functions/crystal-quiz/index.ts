@@ -49,7 +49,12 @@ function clientIp(req: Request): string {
 // On a successful quiz submission we mint a nonce bound to the email.
 // Only that nonce can later flip the "Wants Crystals" cell for that email,
 // preventing arbitrary callers from overwriting other people's rows.
-interface NonceEntry { email: string; expiresAt: number }
+interface NonceEntry {
+  email: string;
+  expiresAt: number;
+  usedSupply?: boolean;
+  usedReport?: boolean;
+}
 const nonces = new Map<string, NonceEntry>();
 const NONCE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -65,12 +70,23 @@ function mintNonce(email: string): string {
   nonces.set(nonce, { email: email.toLowerCase(), expiresAt: now + NONCE_TTL_MS });
   return nonce;
 }
-function consumeNonce(nonce: string, email: string): boolean {
+// Each follow-up field (supply, report) can be recorded at most once per nonce.
+// The nonce itself is kept until both have been used or it expires, so the
+// user can answer the two prompts independently.
+function consumeNonce(nonce: string, email: string, field: "supply" | "report"): boolean {
   const entry = nonces.get(nonce);
   if (!entry) return false;
-  nonces.delete(nonce); // single-use
-  if (entry.expiresAt < Date.now()) return false;
-  return entry.email === email.toLowerCase();
+  if (entry.expiresAt < Date.now()) { nonces.delete(nonce); return false; }
+  if (entry.email !== email.toLowerCase()) return false;
+  if (field === "supply") {
+    if (entry.usedSupply) return false;
+    entry.usedSupply = true;
+  } else {
+    if (entry.usedReport) return false;
+    entry.usedReport = true;
+  }
+  if (entry.usedSupply && entry.usedReport) nonces.delete(nonce);
+  return true;
 }
 
 interface Crystal {
@@ -195,15 +211,16 @@ async function appendLeadToSheet(row: (string | number)[]): Promise<void> {
   }
 }
 
-// Update the "Wants Crystals" column (E) for the most recent row matching this email.
-async function updateWantsSupplyInSheet(email: string, wantsSupply: boolean): Promise<void> {
+// Update a single column (e.g. "E" Wants Crystals, "F" Wants Personalised Report)
+// for the most recent row matching this email.
+async function updateLeadColumnInSheet(email: string, column: "E" | "F", value: string): Promise<void> {
   const sheetId = Deno.env.get("LEADS_SHEET_ID");
   const tab = Deno.env.get("LEADS_SHEET_TAB") || "Leads";
   if (!sheetId) throw new Error("Missing LEADS_SHEET_ID");
   const token = await getAccessToken();
 
-  // Read column C (email) to find the row
-  const readRange = `${tab}!A:E`;
+  // Read columns A:F to locate the most recent row for this email
+  const readRange = `${tab}!A:F`;
   const readUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(readRange)}`;
   const readRes = await fetch(readUrl, {
     headers: { Authorization: `Bearer ${token}` },
@@ -225,7 +242,7 @@ async function updateWantsSupplyInSheet(email: string, wantsSupply: boolean): Pr
     return;
   }
   const sheetRow = rowIndex + 1; // 1-indexed
-  const writeRange = `${tab}!E${sheetRow}`;
+  const writeRange = `${tab}!${column}${sheetRow}`;
   const writeUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(writeRange)}?valueInputOption=RAW`;
   const writeRes = await fetch(writeUrl, {
     method: "PUT",
@@ -233,7 +250,7 @@ async function updateWantsSupplyInSheet(email: string, wantsSupply: boolean): Pr
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ values: [[sanitizeCell(wantsSupply ? "Yes" : "Maybe later")]] }),
+    body: JSON.stringify({ values: [[sanitizeCell(value)]] }),
   });
   if (!writeRes.ok) {
     throw new Error(`Sheets update failed [${writeRes.status}]: ${await writeRes.text()}`);
@@ -333,7 +350,13 @@ Deno.serve(async (req) => {
     }
 
     // submit
-    const body: QuizSubmission & { _supplyOnly?: boolean; wantsSupply?: boolean; nonce?: string } = await req.json();
+    const body: QuizSubmission & {
+      _supplyOnly?: boolean;
+      _reportOnly?: boolean;
+      wantsSupply?: boolean;
+      wantsReport?: boolean;
+      nonce?: string;
+    } = await req.json();
 
     // Handle the supply follow-up event (after results are shown)
     if (body._supplyOnly && body.email) {
@@ -343,9 +366,9 @@ Deno.serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Require a valid, single-use, email-bound nonce so callers cannot
-      // overwrite arbitrary emails' "Wants Crystals" column.
-      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email)) {
+      // Require a valid, email-bound nonce so callers cannot overwrite
+      // arbitrary emails' "Wants Crystals" column.
+      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "supply")) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -357,9 +380,37 @@ Deno.serve(async (req) => {
         });
       }
       try {
-        await updateWantsSupplyInSheet(v.email, !!body.wantsSupply);
+        await updateLeadColumnInSheet(v.email, "E", body.wantsSupply ? "Yes" : "Maybe later");
       } catch (err) {
         console.error("Supply update failed:", err instanceof Error ? err.message : err);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Handle the personalised-report follow-up event
+    if (body._reportOnly && body.email) {
+      if (!rateLimit(`report:${ip}`, 10, 60_000)) {
+        return new Response(JSON.stringify({ error: "Too many requests" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "report")) {
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const v = validateLead("placeholder", body.email);
+      if (!v.ok) {
+        return new Response(JSON.stringify({ error: "Invalid email" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      try {
+        await updateLeadColumnInSheet(v.email, "F", body.wantsReport ? "Yes" : "Maybe later");
+      } catch (err) {
+        console.error("Report update failed:", err instanceof Error ? err.message : err);
       }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -417,6 +468,7 @@ Deno.serve(async (req) => {
         safeEmail,
         topNames,
         "", // Wants Crystals — filled in after the user answers the supply question
+        "", // Wants Personalised Report — filled in after the user answers the report prompt
       ]);
     } catch (sheetErr) {
       console.error("Sheet append failed:", sheetErr instanceof Error ? sheetErr.message : sheetErr);

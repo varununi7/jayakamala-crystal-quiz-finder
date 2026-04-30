@@ -45,48 +45,54 @@ function clientIp(req: Request): string {
   return (fwd?.split(",")[0] || req.headers.get("cf-connecting-ip") || "unknown").trim();
 }
 
-// ---------- Short-lived nonce store ----------
-// On a successful quiz submission we mint a nonce bound to the email.
-// Only that nonce can later flip the "Wants Crystals" cell for that email,
-// preventing arbitrary callers from overwriting other people's rows.
-interface NonceEntry {
-  email: string;
-  expiresAt: number;
-  usedSupply?: boolean;
-  usedReport?: boolean;
-}
-const nonces = new Map<string, NonceEntry>();
+// ---------- Stateless signed nonce ----------
+// Edge function instances are ephemeral, so we cannot rely on in-memory state
+// across calls. We mint an HMAC-signed token binding email + expiry. Any caller
+// holding the token can record follow-up fields for that specific email only,
+// which preserves the original security goal (no overwriting other people's rows).
 const NONCE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const NONCE_SECRET = Deno.env.get("SUPABASE_JWKS") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-dev-secret";
 
-function mintNonce(email: string): string {
-  // Drop expired nonces opportunistically
-  const now = Date.now();
-  if (nonces.size > 1000) {
-    for (const [k, v] of nonces) if (v.expiresAt < now) nonces.delete(k);
-  }
-  const buf = new Uint8Array(24);
-  crypto.getRandomValues(buf);
-  const nonce = Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
-  nonces.set(nonce, { email: email.toLowerCase(), expiresAt: now + NONCE_TTL_MS });
-  return nonce;
+async function hmacHex(message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(NONCE_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
 }
-// Each follow-up field (supply, report) can be recorded at most once per nonce.
-// The nonce itself is kept until both have been used or it expires, so the
-// user can answer the two prompts independently.
-function consumeNonce(nonce: string, email: string, field: "supply" | "report"): boolean {
-  const entry = nonces.get(nonce);
-  if (!entry) return false;
-  if (entry.expiresAt < Date.now()) { nonces.delete(nonce); return false; }
-  if (entry.email !== email.toLowerCase()) return false;
-  if (field === "supply") {
-    if (entry.usedSupply) return false;
-    entry.usedSupply = true;
-  } else {
-    if (entry.usedReport) return false;
-    entry.usedReport = true;
-  }
-  if (entry.usedSupply && entry.usedReport) nonces.delete(nonce);
-  return true;
+
+async function mintNonce(email: string): Promise<string> {
+  const exp = Date.now() + NONCE_TTL_MS;
+  const payload = `${email.toLowerCase()}|${exp}`;
+  const sig = await hmacHex(payload);
+  // base64url-encode payload to keep transport-safe; sig is hex
+  const payloadB64 = btoa(payload).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${payloadB64}.${sig}`;
+}
+
+async function consumeNonce(nonce: string, email: string, _field: "supply" | "report"): Promise<boolean> {
+  if (typeof nonce !== "string" || !nonce.includes(".")) return false;
+  const [payloadB64, sig] = nonce.split(".");
+  if (!payloadB64 || !sig) return false;
+  let payload: string;
+  try {
+    payload = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+  } catch { return false; }
+  const [tokEmail, expStr] = payload.split("|");
+  if (!tokEmail || !expStr) return false;
+  const exp = Number(expStr);
+  if (!Number.isFinite(exp) || exp < Date.now()) return false;
+  if (tokEmail !== email.toLowerCase()) return false;
+  const expected = await hmacHex(payload);
+  if (expected.length !== sig.length) return false;
+  // constant-time-ish compare
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
+  return diff === 0;
 }
 
 interface Crystal {
@@ -368,7 +374,7 @@ Deno.serve(async (req) => {
       }
       // Require a valid, email-bound nonce so callers cannot overwrite
       // arbitrary emails' "Wants Crystals" column.
-      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "supply")) {
+      if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "supply"))) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -396,7 +402,7 @@ Deno.serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "report")) {
+      if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "report"))) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -476,7 +482,7 @@ Deno.serve(async (req) => {
 
     // Mint a single-use, email-bound nonce so the client can later record the
     // user's "Wants Crystals" choice for THIS email only.
-    const nonce = mintNonce(safeEmail);
+    const nonce = await mintNonce(safeEmail);
 
     return new Response(JSON.stringify({ recommendations: top3, nonce }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

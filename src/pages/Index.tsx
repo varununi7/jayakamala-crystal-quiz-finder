@@ -456,10 +456,10 @@ const Index = () => {
                     )}
                     {(r.details.Chakra || r.details.Element || r.details.Color || r.details.Colour) && (
                       <div className="flex flex-wrap gap-2 text-xs">
-                        {r.details.Chakra && <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Chakra} chakra</span>}
-                        {r.details.Element && <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Element}</span>}
+                        {r.details.Chakra && <span className="rounded-full px-3 py-1 text-black bg-[#fff5f6]">{r.details.Chakra} chakra</span>}
+                        {r.details.Element && <span className="rounded-full px-3 py-1 text-black bg-[#fff5f6]">{r.details.Element}</span>}
                         {(r.details.Color || r.details.Colour) && (
-                          <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Color || r.details.Colour}</span>
+                          <span className="rounded-full px-3 py-1 bg-[#fff5f6] text-black">{r.details.Color || r.details.Colour}</span>
                         )}
                       </div>
                     )}
@@ -491,7 +491,7 @@ const Index = () => {
                     >
                       ✨ Yes, send my crystals
                     </Button>
-                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full text-[#fff5f6] hover:text-white bg-[#fff5f6]">
+                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full bg-[#fff5f6] text-black">
                       Maybe later
                     </Button>
                   </div>
@@ -533,7 +533,7 @@ const Index = () => {
                         ✨ Yes, send me a personalised report
                       </a>
                     </Button>
-                    <Button variant="ghost" className="rounded-full text-[#fff5f6] hover:text-white bg-[#fff5f6]" onClick={() => handleReport(false)}>
+                    <Button variant="ghost" className="rounded-full bg-[#fff5f6] text-black" onClick={() => handleReport(false)}>
                       Maybe later
                     </Button>
                   </div>

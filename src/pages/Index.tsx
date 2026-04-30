@@ -232,8 +232,8 @@ const Index = () => {
               <div className="w-full max-w-md rounded-3xl border border-border p-8 backdrop-blur-sm" style={{ background: "var(--gradient-card)" }}>
                 <div className="mb-6 text-center">
                   <Mail className="mx-auto mb-3 h-8 w-8 text-white" />
-                  <h2 className="text-2xl font-light">Where shall we send your reading?</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <h2 className="text-2xl font-light text-white">Where shall we send your reading?</h2>
+                  <p className="mt-2 text-sm text-[#fff5f6]">
                     We'll save your crystals so you can revisit anytime ✨
                   </p>
                 </div>
@@ -257,7 +257,7 @@ const Index = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={60}
-                    className="h-12 rounded-xl bg-background/40"
+                    className="h-12 rounded-xl bg-background/40 border-secondary-foreground"
                   />
                   <Input
                     type="email"
@@ -265,7 +265,7 @@ const Index = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={120}
-                    className="h-12 rounded-xl bg-background/40"
+                    className="h-12 rounded-xl bg-background/40 border-secondary-foreground"
                   />
                   <Button
                     type="submit"

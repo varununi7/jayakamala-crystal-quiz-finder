@@ -208,15 +208,15 @@ const Index = () => {
               <Button
                 size="lg"
                 onClick={() => setScreen("capture")}
-                className="rounded-full px-8 py-6 text-base font-medium shadow-[var(--shadow-glow)] hover:shadow-[var(--shadow-elegant)] transition-all hover:scale-105"
-                style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                className="rounded-full px-8 py-6 text-base font-medium shadow-[var(--shadow-glow)] hover:shadow-[var(--shadow-elegant)] transition-all hover:scale-105 bg-[#be1e28] text-[#fff5f6]"
+                style={{ background: "#be1e28", color: "#fff5f6" }}
               >
                 <Sparkles className="mr-2 h-5 w-5" /> Begin Your Reading
               </Button>
-              <div className="mt-12 flex items-center gap-6 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5"><Moon className="h-3.5 w-3.5" /> Free reading</span>
-                <span className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5" /> 9 questions</span>
-                <span className="flex items-center gap-1.5"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
+              <div className="mt-12 flex items-center gap-6 text-xs">
+                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Moon className="h-3.5 w-3.5" /> Free reading</span>
+                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Star className="h-3.5 w-3.5" /> 9 questions</span>
+                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
               </div>
             </motion.section>
           )}

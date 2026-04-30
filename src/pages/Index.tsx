@@ -287,17 +287,17 @@ const Index = () => {
               className="flex flex-1 flex-col"
             >
               <div className="mb-6">
-                <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="mb-2 flex items-center justify-between text-xs text-[#fff5f6]">
                   <span>Question {currentQ + 1} of {questions.length}</span>
-                  <span className="text-accent">{Math.round(progress)}% aligned ✨</span>
+                  <span className="text-white font-semibold">{Math.round(progress)}% aligned ✨</span>
                 </div>
                 <Progress value={progress} className="h-1.5 bg-muted" />
               </div>
-              <h2 className="mb-6 text-2xl font-light leading-snug md:text-3xl">
+              <h2 className="mb-6 text-2xl font-light leading-snug md:text-3xl text-white">
                 {questions[currentQ].text}
               </h2>
               {questions[currentQ].multiSelect && (
-                <p className="-mt-4 mb-5 text-xs italic text-accent">
+                <p className="-mt-4 mb-5 text-xs italic text-white">
                   ✨ Choose up to {questions[currentQ].maxSelections ?? 2}
                 </p>
               )}
@@ -310,14 +310,14 @@ const Index = () => {
                     <button
                       key={i}
                       onClick={() => selectOption(i)}
-                      className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] hover:border-primary/60 ${
+                      className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] hover:border-[#be1e28]/60 ${
                         selected
-                          ? "border-primary shadow-[var(--shadow-glow)]"
+                          ? "border-[#be1e28] shadow-[var(--shadow-glow)]"
                           : "border-border"
                       }`}
                       style={{
                         background: selected
-                          ? "linear-gradient(135deg, hsl(var(--primary) / 0.2), hsl(var(--accent) / 0.1))"
+                          ? "linear-gradient(135deg, #be1e2833, #be1e2811)"
                           : "var(--gradient-card)",
                       }}
                     >
@@ -326,13 +326,13 @@ const Index = () => {
                       <span
                         className={`flex h-5 w-5 shrink-0 items-center justify-center border-2 ${
                           isMulti ? "rounded-md" : "rounded-full"
-                        } ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`}
+                        } ${selected ? "border-[#be1e28] bg-[#be1e28]" : "border-[#fff5f6]/40"}`}
                       >
                         {selected && isMulti && (
-                          <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
+                          <Check className="h-3.5 w-3.5 text-[#fff5f6]" strokeWidth={3} />
                         )}
                         {selected && !isMulti && (
-                          <span className="h-2 w-2 rounded-full bg-primary-foreground" />
+                          <span className="h-2 w-2 rounded-full bg-[#fff5f6]" />
                         )}
                       </span>
                     </button>
@@ -343,8 +343,7 @@ const Index = () => {
                 <Button
                   onClick={handleContinue}
                   disabled={!Array.isArray(answers[currentQ]) || (answers[currentQ] as number[]).length === 0}
-                  className="mt-5 h-12 w-full rounded-xl text-base"
-                  style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                  className="mt-5 h-12 w-full rounded-xl text-base bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90"
                 >
                   Continue <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -357,7 +356,7 @@ const Index = () => {
                     setAnswers(next);
                     advance(next);
                   }}
-                  className="mt-4 self-center text-xs text-muted-foreground underline-offset-4 hover:text-accent hover:underline"
+                  className="mt-4 self-center text-xs text-[#fff5f6]/70 underline-offset-4 hover:text-white hover:underline"
                 >
                   Skip this question
                 </button>
@@ -367,11 +366,11 @@ const Index = () => {
                   variant="ghost"
                   onClick={() => currentQ > 0 && setCurrentQ(currentQ - 1)}
                   disabled={currentQ === 0}
-                  className="text-muted-foreground"
+                  className="text-[#fff5f6] hover:text-white"
                 >
                   <ArrowLeft className="mr-1 h-4 w-4" /> Back
                 </Button>
-                <span className="self-center text-xs text-muted-foreground italic">
+                <span className="self-center text-xs text-[#fff5f6] italic">
                   {currentQ < 3 && "Trust your first instinct ✨"}
                   {currentQ >= 3 && currentQ < 6 && "You're doing beautifully 💫"}
                   {currentQ >= 6 && "Almost there, the crystals await 🔮"}
@@ -395,8 +394,8 @@ const Index = () => {
               >
                 🔮
               </motion.div>
-              <h2 className="mb-2 text-2xl font-light">Reading your energy…</h2>
-              <p className="text-sm text-muted-foreground">Aligning your crystals with the universe</p>
+              <h2 className="mb-2 text-2xl font-light text-white">Reading your energy…</h2>
+              <p className="text-sm text-[#fff5f6]">Aligning your crystals with the universe</p>
             </motion.section>
           )}
 
@@ -415,16 +414,16 @@ const Index = () => {
                 >
                   ✨
                 </motion.div>
-                <h1 className="text-3xl font-light md:text-4xl">
+                <h1 className="text-3xl font-light md:text-4xl text-white">
                   {name}, the universe has spoken
                 </h1>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-[#fff5f6]">
                   Your 3 soul-aligned crystals, in order of resonance
                 </p>
               </div>
 
               {results.length === 0 && (
-                <p className="text-center text-muted-foreground">
+                <p className="text-center text-[#fff5f6]">
                   No matches found. Please try again.
                 </p>
               )}
@@ -441,28 +440,28 @@ const Index = () => {
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div>
-                        <div className="mb-1 text-xs uppercase tracking-widest text-accent">
+                        <div className="mb-1 text-xs uppercase tracking-widest text-white font-semibold">
                           {i === 0 ? "✦ Your primary crystal" : i === 1 ? "✦ Your second crystal" : "✦ Your third crystal"}
                         </div>
-                        <h3 className="text-2xl font-medium">{r.name}</h3>
+                        <h3 className="text-2xl font-medium text-white">{r.name}</h3>
                       </div>
-                      <div className="text-right text-xs text-muted-foreground">
-                        <div className="text-2xl font-light text-accent">{r.score}</div>
+                      <div className="text-right text-xs text-[#fff5f6]">
+                        <div className="text-2xl font-light text-white">{r.score}</div>
                         <div>resonance</div>
                       </div>
                     </div>
                     {r.details.Functions && (
-                      <p className="mb-2 text-sm text-foreground/90">
-                        <span className="text-muted-foreground">Supports: </span>
+                      <p className="mb-2 text-sm text-[#fff5f6]">
+                        <span className="text-[#fff5f6]/70">Supports: </span>
                         {r.details.Functions}
                       </p>
                     )}
                     {(r.details.Chakra || r.details.Element || r.details.Color || r.details.Colour) && (
                       <div className="flex flex-wrap gap-2 text-xs">
-                        {r.details.Chakra && <span className="rounded-full bg-secondary px-3 py-1">{r.details.Chakra} chakra</span>}
-                        {r.details.Element && <span className="rounded-full bg-secondary px-3 py-1">{r.details.Element}</span>}
+                        {r.details.Chakra && <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Chakra} chakra</span>}
+                        {r.details.Element && <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Element}</span>}
                         {(r.details.Color || r.details.Colour) && (
-                          <span className="rounded-full bg-secondary px-3 py-1">{r.details.Color || r.details.Colour}</span>
+                          <span className="rounded-full bg-[#be1e28] text-[#fff5f6] px-3 py-1">{r.details.Color || r.details.Colour}</span>
                         )}
                       </div>
                     )}
@@ -476,26 +475,25 @@ const Index = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 }}
-                  className="mt-8 rounded-3xl border-2 border-accent/40 p-6 text-center"
+                  className="mt-8 rounded-3xl border-2 border-[#be1e28]/50 p-6 text-center"
                   style={{ background: "linear-gradient(135deg, hsl(var(--accent) / 0.15), hsl(var(--primary) / 0.1))" }}
                 >
-                  <Heart className="mx-auto mb-2 h-6 w-6 text-accent" />
-                  <h3 className="mb-2 text-xl font-light">
+                  <Heart className="mx-auto mb-2 h-6 w-6 text-white" />
+                  <h3 className="mb-2 text-xl font-light text-white">
                     Want us to send these crystals to you?
                   </h3>
-                  <p className="mb-4 text-sm text-muted-foreground">
+                  <p className="mb-4 text-sm text-[#fff5f6]">
                     Hand-picked, ethically sourced, charged under a full moon 🌕
                     <br />Delivered to your door so you can start your journey today.
                   </p>
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                     <Button
                       onClick={() => handleSupply(true)}
-                      className="rounded-full px-6"
-                      style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                      className="rounded-full px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90"
                     >
                       ✨ Yes, send my crystals
                     </Button>
-                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full">
+                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full text-[#fff5f6] hover:text-white">
                       Maybe later
                     </Button>
                   </div>
@@ -503,7 +501,7 @@ const Index = () => {
               )}
 
               {wantsSupply !== null && (
-                <p className="mt-8 text-center text-sm text-muted-foreground">
+                <p className="mt-8 text-center text-sm text-[#fff5f6]">
                   {wantsSupply ? "💜 We'll reach out within 24 hours." : "💫 Save this page — your crystals await whenever you're ready."}
                 </p>
               )}
@@ -513,22 +511,21 @@ const Index = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1 }}
-                  className="mt-6 rounded-3xl border-2 border-accent/40 p-6 text-center"
+                  className="mt-6 rounded-3xl border-2 border-[#be1e28]/50 p-6 text-center"
                   style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.1))" }}
                 >
-                  <Sparkles className="mx-auto mb-2 h-6 w-6 text-accent" />
-                  <h3 className="mb-2 text-xl font-light">
+                  <Sparkles className="mx-auto mb-2 h-6 w-6 text-white" />
+                  <h3 className="mb-2 text-xl font-light text-white">
                     Want a personalised healing crystal recommendation specific to your birth chart?
                   </h3>
-                  <p className="mb-4 text-sm text-muted-foreground">
+                  <p className="mb-4 text-sm text-[#fff5f6]">
                     Personalized to your own birth chart, hand written PDF report delivered within 48 hours straight to your inbox!
                   </p>
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                     <Button
                       asChild
                       onClick={() => handleReport(true)}
-                      className="rounded-full px-6"
-                      style={{ background: "var(--gradient-mystic)", color: "hsl(var(--primary-foreground))" }}
+                      className="rounded-full px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90"
                     >
                       <a
                         href="https://jayakamala.com/crystal-healing-consultation"
@@ -538,7 +535,7 @@ const Index = () => {
                         ✨ Yes, send me a personalised report
                       </a>
                     </Button>
-                    <Button variant="ghost" className="rounded-full" onClick={() => handleReport(false)}>
+                    <Button variant="ghost" className="rounded-full text-[#fff5f6] hover:text-white" onClick={() => handleReport(false)}>
                       Maybe later
                     </Button>
                   </div>
@@ -546,7 +543,7 @@ const Index = () => {
               )}
 
               {wantsReport !== null && (
-                <p className="mt-6 text-center text-sm text-muted-foreground">
+                <p className="mt-6 text-center text-sm text-[#fff5f6]">
                   {wantsReport ? "💜 Your personalised birth-chart report is on its way (within 48h)." : "💫 The personalised report is here whenever you're ready."}
                 </p>
               )}

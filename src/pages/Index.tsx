@@ -193,16 +193,16 @@ const Index = () => {
                 🔮
               </motion.div>
               <h1 className="mb-4 text-4xl font-light tracking-tight md:text-6xl">
-                <span className="bg-clip-text text-[#be1e28]" style={{ backgroundImage: "var(--gradient-mystic)" }}>
+                <span className="bg-clip-text text-white font-semibold" style={{ backgroundImage: "var(--gradient-mystic)" }}>
                   Discover YOUR
                 </span>
                 <br />
-                <span className="italic text-[#be1e28]">Soul Crystals!</span>
+                <span className="italic text-white font-bold">Soul Crystals!</span>
               </h1>
-              <p className="mb-2 max-w-md text-base md:text-lg text-[#0c060e]">
+              <p className="mb-2 max-w-md text-base md:text-lg text-[#fff5f6]">
                 The universe has a message for you.
               </p>
-              <p className="mb-10 max-w-md text-sm text-[#0c060e]">
+              <p className="mb-10 max-w-md text-sm text-[#fff5f6]">
                 Answer 9 short questions and discover the crystals aligned with your energy <em>right now</em>. Personalised. Accurate. Under 2 minutes.
               </p>
               <Button
@@ -214,9 +214,9 @@ const Index = () => {
                 <Sparkles className="mr-2 h-5 w-5" /> Begin Your Reading
               </Button>
               <div className="mt-12 flex items-center gap-6 text-xs">
-                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Moon className="h-3.5 w-3.5" /> Free reading</span>
-                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Star className="h-3.5 w-3.5" /> 9 questions</span>
-                <span className="flex items-center gap-1.5 text-[#e37283] font-semibold"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Moon className="h-3.5 w-3.5" /> Free reading</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Star className="h-3.5 w-3.5" /> 9 questions</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
               </div>
             </motion.section>
           )}

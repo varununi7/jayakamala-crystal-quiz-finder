@@ -172,7 +172,7 @@ const Index = () => {
   };
 
   return (
-    <main className="relative min-h-screen text-foreground" style={{ background: "var(--gradient-cosmic)" }}>
+    <main className="relative min-h-screen bg-[#fff5f6] text-foreground" style={{ background: "var(--gradient-cosmic)" }}>
       <Stars />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-8">
         <AnimatePresence mode="wait">
@@ -193,16 +193,16 @@ const Index = () => {
                 🔮
               </motion.div>
               <h1 className="mb-4 text-4xl font-light tracking-tight md:text-6xl">
-                <span className="bg-clip-text text-transparent" style={{ backgroundImage: "var(--gradient-mystic)" }}>
-                  Discover Your
+                <span className="bg-clip-text text-[#be1e28]" style={{ backgroundImage: "var(--gradient-mystic)" }}>
+                  Discover YOUR
                 </span>
                 <br />
-                <span className="italic">Soul Crystals</span>
+                <span className="italic text-[#be1e28]">Soul Crystals!</span>
               </h1>
-              <p className="mb-2 max-w-md text-base text-muted-foreground md:text-lg">
+              <p className="mb-2 max-w-md text-base md:text-lg text-[#0c060e]">
                 The universe has a message for you.
               </p>
-              <p className="mb-10 max-w-md text-sm text-muted-foreground">
+              <p className="mb-10 max-w-md text-sm text-[#0c060e]">
                 Answer 9 short questions and discover the crystals aligned with your energy <em>right now</em>. Personalised. Accurate. Under 2 minutes.
               </p>
               <Button

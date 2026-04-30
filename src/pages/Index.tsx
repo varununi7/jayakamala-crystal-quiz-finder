@@ -311,9 +311,7 @@ const Index = () => {
                       key={i}
                       onClick={() => selectOption(i)}
                       className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all hover:scale-[1.01] hover:border-[#be1e28]/60 ${
-                        selected
-                          ? "border-[#be1e28] shadow-[var(--shadow-glow)]"
-                          : "border-border"
+                        selected ? "border-[#fff5f6] shadow-[var(--shadow-glow)]" : "border-border"
                       }`}
                       style={{
                         background: selected

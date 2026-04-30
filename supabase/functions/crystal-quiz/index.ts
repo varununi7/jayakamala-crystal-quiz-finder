@@ -375,8 +375,8 @@ Deno.serve(async (req) => {
       // Require a valid, email-bound nonce so callers cannot overwrite
       // arbitrary emails' "Wants Crystals" column.
       if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "supply"))) {
-        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ ok: false, stale: true }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const v = validateLead("placeholder", body.email);
@@ -403,8 +403,8 @@ Deno.serve(async (req) => {
         });
       }
       if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "report"))) {
-        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-          status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ ok: false, stale: true }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const v = validateLead("placeholder", body.email);

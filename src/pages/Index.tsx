@@ -152,9 +152,11 @@ const Index = () => {
     setWantsSupply(yes);
     try {
       // best-effort secondary update via insert (small follow-up event)
-      await supabase.functions.invoke("crystal-quiz", {
-        body: { name, email, answers: [], _supplyOnly: true, wantsSupply: yes, nonce: supplyNonce },
-      }).catch(() => {});
+      if (supplyNonce?.includes(".")) {
+        await supabase.functions.invoke("crystal-quiz", {
+          body: { name, email, answers: [], _supplyOnly: true, wantsSupply: yes, nonce: supplyNonce },
+        }).catch(() => {});
+      }
     } catch {}
     if (yes) toast.success("✨ Wonderful! We'll be in touch within 24h.");
     else toast("Thanks for taking the reading 💜");
@@ -163,9 +165,11 @@ const Index = () => {
   const handleReport = async (yes: boolean) => {
     setWantsReport(yes);
     try {
-      await supabase.functions.invoke("crystal-quiz", {
-        body: { name, email, answers: [], _reportOnly: true, wantsReport: yes, nonce: supplyNonce },
-      }).catch(() => {});
+      if (supplyNonce?.includes(".")) {
+        await supabase.functions.invoke("crystal-quiz", {
+          body: { name, email, answers: [], _reportOnly: true, wantsReport: yes, nonce: supplyNonce },
+        }).catch(() => {});
+      }
     } catch {}
     if (yes) toast.success("✨ Beautiful! Your personalised report will arrive within 48h.");
     else toast("Whenever you're ready 💫");

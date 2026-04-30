@@ -491,7 +491,7 @@ const Index = () => {
                   <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                     <Button
                       onClick={() => handleSupply(true)}
-                      className="px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90 rounded-none"
+                      className="px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90 ml-[15px] mt-[15px] mr-[15px] mb-[15px] rounded-full"
                     >
                       ✨ Yes, send my crystals
                     </Button>
@@ -527,7 +527,7 @@ const Index = () => {
                     <Button
                       asChild
                       onClick={() => handleReport(true)}
-                      className="px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90 rounded-none"
+                      className="px-6 bg-[#be1e28] text-[#fff5f6] hover:bg-[#be1e28]/90 rounded-full"
                     >
                       <a
                         href="https://jayakamala.com/crystal-healing-consultation"

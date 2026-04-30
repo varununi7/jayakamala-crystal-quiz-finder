@@ -533,7 +533,7 @@ const Index = () => {
                         ✨ Yes, send me a personalised report
                       </a>
                     </Button>
-                    <Button variant="ghost" className="rounded-full text-[#fff5f6] hover:text-white" onClick={() => handleReport(false)}>
+                    <Button variant="ghost" className="rounded-full text-[#fff5f6] hover:text-white bg-[#fff5f6]" onClick={() => handleReport(false)}>
                       Maybe later
                     </Button>
                   </div>

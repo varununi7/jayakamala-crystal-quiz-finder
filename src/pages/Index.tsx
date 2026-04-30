@@ -231,7 +231,7 @@ const Index = () => {
             >
               <div className="w-full max-w-md rounded-3xl border border-border p-8 backdrop-blur-sm" style={{ background: "var(--gradient-card)" }}>
                 <div className="mb-6 text-center">
-                  <Mail className="mx-auto mb-3 h-8 w-8 text-accent" />
+                  <Mail className="mx-auto mb-3 h-8 w-8 text-white" />
                   <h2 className="text-2xl font-light">Where shall we send your reading?</h2>
                   <p className="mt-2 text-sm text-muted-foreground">
                     We'll save your crystals so you can revisit anytime ✨

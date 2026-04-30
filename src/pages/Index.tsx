@@ -172,7 +172,7 @@ const Index = () => {
   };
 
   return (
-    <main className="relative min-h-screen bg-[#fff5f6] text-foreground" style={{ background: "var(--gradient-cosmic)" }}>
+    <main className="relative min-h-screen bg-[#fff5f6] text-[#fff5f6]" style={{ background: "var(--gradient-cosmic)" }}>
       <Stars />
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-8">
         <AnimatePresence mode="wait">

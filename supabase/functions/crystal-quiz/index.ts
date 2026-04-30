@@ -374,7 +374,7 @@ Deno.serve(async (req) => {
       }
       // Require a valid, email-bound nonce so callers cannot overwrite
       // arbitrary emails' "Wants Crystals" column.
-      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "supply")) {
+      if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "supply"))) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (typeof body.nonce !== "string" || !consumeNonce(body.nonce, body.email, "report")) {
+      if (typeof body.nonce !== "string" || !(await consumeNonce(body.nonce, body.email, "report"))) {
         return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -482,7 +482,7 @@ Deno.serve(async (req) => {
 
     // Mint a single-use, email-bound nonce so the client can later record the
     // user's "Wants Crystals" choice for THIS email only.
-    const nonce = mintNonce(safeEmail);
+    const nonce = await mintNonce(safeEmail);
 
     return new Response(JSON.stringify({ recommendations: top3, nonce }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

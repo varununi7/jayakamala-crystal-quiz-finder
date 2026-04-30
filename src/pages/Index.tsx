@@ -257,7 +257,7 @@ const Index = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     maxLength={60}
-                    className="h-12 bg-background/40 border-white rounded-full"
+                    className="h-12 bg-background/40 border-white rounded-full border-none border-0"
                   />
                   <Input
                     type="email"
@@ -265,7 +265,7 @@ const Index = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     maxLength={120}
-                    className="h-12 bg-background/40 border-white rounded-full"
+                    className="h-12 bg-background/40 border-white rounded-full border-none border-0"
                   />
                   <Button type="submit" className="h-12 w-full text-base text-[#fff5f6] bg-[#be1e28] hover:bg-[#be1e28] rounded-full">
                     Start My Crystal Quiz <ArrowRight className="ml-2 h-4 w-4" />

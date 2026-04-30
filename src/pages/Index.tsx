@@ -267,7 +267,7 @@ const Index = () => {
                     maxLength={120}
                     className="h-12 rounded-xl bg-background/40 border-secondary-foreground"
                   />
-                  <Button type="submit" className="h-12 w-full rounded-xl text-base bg-[#be1e28]">
+                  <Button type="submit" className="h-12 w-full rounded-xl text-base bg-[#be1e28] text-[#fff5f6]">
                     Start My Crystal Quiz <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </form>

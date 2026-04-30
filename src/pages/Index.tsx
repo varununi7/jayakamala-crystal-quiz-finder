@@ -433,7 +433,7 @@ const Index = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.2 }}
-                    className="rounded-3xl border border-border p-6 backdrop-blur-sm"
+                    className="rounded-3xl border p-6 backdrop-blur-sm border-neutral-100"
                     style={{ background: "var(--gradient-card)", boxShadow: i === 0 ? "var(--shadow-glow)" : undefined }}
                   >
                     <div className="mb-3 flex items-start justify-between gap-3">
@@ -473,7 +473,7 @@ const Index = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8 }}
-                  className="mt-8 rounded-3xl border-2 border-[#be1e28]/50 p-6 text-center"
+                  className="mt-8 rounded-3xl border-2 p-6 text-center border-[#be1e28]"
                   style={{ background: "linear-gradient(135deg, hsl(var(--accent) / 0.15), hsl(var(--primary) / 0.1))" }}
                 >
                   <Heart className="mx-auto mb-2 h-6 w-6 text-white" />
@@ -509,7 +509,7 @@ const Index = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1 }}
-                  className="mt-6 rounded-3xl border-2 border-[#be1e28]/50 p-6 text-center"
+                  className="mt-6 rounded-3xl border-2 p-6 text-center border-[#be1e28]"
                   style={{ background: "linear-gradient(135deg, hsl(var(--primary) / 0.15), hsl(var(--accent) / 0.1))" }}
                 >
                   <Sparkles className="mx-auto mb-2 h-6 w-6 text-white" />

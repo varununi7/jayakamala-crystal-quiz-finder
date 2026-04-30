@@ -229,7 +229,7 @@ const Index = () => {
               exit={{ opacity: 0, y: -20 }}
               className="flex flex-1 flex-col items-center justify-center"
             >
-              <div className="w-full max-w-md rounded-3xl border border-border p-8 backdrop-blur-sm" style={{ background: "var(--gradient-card)" }}>
+              <div className="w-full max-w-md rounded-3xl border p-8 backdrop-blur-sm border-[#fcfcfc]" style={{ background: "var(--gradient-card)" }}>
                 <div className="mb-6 text-center">
                   <Mail className="mx-auto mb-3 h-8 w-8 text-white" />
                   <h2 className="text-2xl font-light text-white">Where shall we send your reading?</h2>

@@ -491,7 +491,7 @@ const Index = () => {
                     >
                       ✨ Yes, send my crystals
                     </Button>
-                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full text-[#fff5f6] hover:text-white">
+                    <Button variant="ghost" onClick={() => handleSupply(false)} className="rounded-full text-[#fff5f6] hover:text-white bg-[#fff5f6]">
                       Maybe later
                     </Button>
                   </div>

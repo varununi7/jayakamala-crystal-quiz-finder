@@ -218,9 +218,9 @@ const Index = () => {
                 <Sparkles className="mr-2 h-5 w-5" /> Begin Your Reading
               </Button>
               <div className="mt-12 flex items-center gap-6 text-xs">
-                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Moon className="h-3.5 w-3.5" /> Free reading</span>
-                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Star className="h-3.5 w-3.5" /> 9 questions</span>
-                <span className="flex items-center gap-1.5 font-semibold text-[#fff5f6]"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#ffba19]"><Moon className="h-3.5 w-3.5" /> Free reading</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#ffba19]"><Star className="h-3.5 w-3.5" /> 9 questions</span>
+                <span className="flex items-center gap-1.5 font-semibold text-[#ffba19]"><Gem className="h-3.5 w-3.5" /> 3 crystals</span>
               </div>
             </motion.section>
           )}

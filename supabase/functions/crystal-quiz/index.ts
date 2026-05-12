@@ -27,18 +27,78 @@ function validateLead(name: unknown, email: unknown): { ok: true; name: string; 
   return { ok: true, name: n, email: e };
 }
 
-// ---------- In-memory per-IP rate limiter ----------
-// Lightweight protection against bulk lead spam. Resets when the worker recycles.
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-function rateLimit(ip: string, limit: number, windowMs: number): boolean {
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip);
-  if (!bucket || bucket.resetAt < now) {
-    rateBuckets.set(ip, { count: 1, resetAt: now + windowMs });
+// ---------- Per-answer payload validation ----------
+const MAX_ANSWERS = 50;
+const MAX_TEXT = 500;
+const MAX_TAGS_PER_ANSWER = 20;
+const MAX_TAG_VALUE = 100;
+const ALLOWED_TAG_FIELDS = new Set(["functions", "collections", "chakra", "color", "element"]);
+
+function validateAnswers(input: unknown): { ok: true } | { ok: false; error: string } {
+  if (!Array.isArray(input)) return { ok: false, error: "answers must be an array" };
+  if (input.length === 0 || input.length > MAX_ANSWERS) {
+    return { ok: false, error: `answers must contain 1-${MAX_ANSWERS} items` };
+  }
+  for (let i = 0; i < input.length; i++) {
+    const a = input[i] as Record<string, unknown> | null;
+    if (!a || typeof a !== "object") return { ok: false, error: `answers[${i}] invalid` };
+    if (!Number.isInteger(a.questionIndex) || (a.questionIndex as number) < 0 || (a.questionIndex as number) > 1000) {
+      return { ok: false, error: `answers[${i}].questionIndex invalid` };
+    }
+    if (!Number.isInteger(a.optionIndex) || (a.optionIndex as number) < 0 || (a.optionIndex as number) > 1000) {
+      return { ok: false, error: `answers[${i}].optionIndex invalid` };
+    }
+    if (typeof a.questionText !== "string" || a.questionText.length > MAX_TEXT) {
+      return { ok: false, error: `answers[${i}].questionText invalid` };
+    }
+    if (typeof a.optionText !== "string" || a.optionText.length > MAX_TEXT) {
+      return { ok: false, error: `answers[${i}].optionText invalid` };
+    }
+    const tags = a.tags as unknown[];
+    if (!Array.isArray(tags) || tags.length > MAX_TAGS_PER_ANSWER) {
+      return { ok: false, error: `answers[${i}].tags invalid` };
+    }
+    for (let j = 0; j < tags.length; j++) {
+      const t = tags[j] as Record<string, unknown> | null;
+      if (!t || typeof t !== "object") return { ok: false, error: `answers[${i}].tags[${j}] invalid` };
+      if (typeof t.field !== "string" || !ALLOWED_TAG_FIELDS.has(t.field)) {
+        return { ok: false, error: `answers[${i}].tags[${j}].field invalid` };
+      }
+      if (typeof t.value !== "string" || t.value.length === 0 || t.value.length > MAX_TAG_VALUE) {
+        return { ok: false, error: `answers[${i}].tags[${j}].value invalid` };
+      }
+      if (typeof t.weight !== "number" || !Number.isFinite(t.weight) || t.weight < 0 || t.weight > 100) {
+        return { ok: false, error: `answers[${i}].tags[${j}].weight invalid` };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+// ---------- Shared, DB-backed per-IP rate limiter ----------
+// Counters live in public.rate_limits so they are shared across edge worker
+// instances and survive worker recycles. On DB error we fail-open and log.
+async function rateLimit(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  bucketKey: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc("rate_limit_hit", {
+      _bucket_key: bucketKey,
+      _limit: limit,
+      _window_seconds: windowSeconds,
+    });
+    if (error) {
+      console.error("rate_limit_hit error:", error.message);
+      return true;
+    }
+    return data === true;
+  } catch (err) {
+    console.error("rate_limit_hit threw:", err instanceof Error ? err.message : err);
     return true;
   }
-  bucket.count += 1;
-  return bucket.count <= limit;
 }
 function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
@@ -342,9 +402,14 @@ Deno.serve(async (req) => {
     const action = url.searchParams.get("action") || "submit";
     const ip = clientIp(req);
 
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
     if (action === "list") {
       // Light rate limit on the public crystal listing
-      if (!rateLimit(`list:${ip}`, 30, 60_000)) {
+      if (!(await rateLimit(supabase, `list:${ip}`, 30, 60))) {
         return new Response(JSON.stringify({ error: "Too many requests" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -367,7 +432,7 @@ Deno.serve(async (req) => {
     // Handle the supply follow-up event (after results are shown)
     if (body._supplyOnly && body.email) {
       // Rate limit follow-up writes
-      if (!rateLimit(`supply:${ip}`, 10, 60_000)) {
+      if (!(await rateLimit(supabase, `supply:${ip}`, 10, 60))) {
         return new Response(JSON.stringify({ error: "Too many requests" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -397,7 +462,7 @@ Deno.serve(async (req) => {
 
     // Handle the personalised-report follow-up event
     if (body._reportOnly && body.email) {
-      if (!rateLimit(`report:${ip}`, 10, 60_000)) {
+      if (!(await rateLimit(supabase, `report:${ip}`, 10, 60))) {
         return new Response(JSON.stringify({ error: "Too many requests" }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -424,14 +489,21 @@ Deno.serve(async (req) => {
     }
 
     // Rate limit submissions
-    if (!rateLimit(`submit:${ip}`, 5, 60_000)) {
+    if (!(await rateLimit(supabase, `submit:${ip}`, 5, 60))) {
       return new Response(JSON.stringify({ error: "Too many requests" }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const v = validateLead(body.name, body.email);
-    if (!v.ok || !Array.isArray(body.answers) || body.answers.length > 50) {
+    if (!v.ok) {
+      return new Response(JSON.stringify({ error: "Invalid submission" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const answersCheck = validateAnswers(body.answers);
+    if (!answersCheck.ok) {
       return new Response(JSON.stringify({ error: "Invalid submission" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -454,10 +526,6 @@ Deno.serve(async (req) => {
     }));
 
     // Save lead
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
     await supabase.from("crystal_leads").insert({
       name: safeName,
       email: safeEmail,

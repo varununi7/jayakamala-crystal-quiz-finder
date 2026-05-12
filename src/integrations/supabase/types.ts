@@ -44,12 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket_key: string
+          count: number
+          reset_at: string
+        }
+        Insert: {
+          bucket_key: string
+          count?: number
+          reset_at: string
+        }
+        Update: {
+          bucket_key?: string
+          count?: number
+          reset_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      rate_limit_hit: {
+        Args: { _bucket_key: string; _limit: number; _window_seconds: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

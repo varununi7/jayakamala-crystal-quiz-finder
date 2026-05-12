@@ -45,7 +45,11 @@ function validateAnswers(input: unknown): { ok: true } | { ok: false; error: str
     if (!Number.isInteger(a.questionIndex) || (a.questionIndex as number) < 0 || (a.questionIndex as number) > 1000) {
       return { ok: false, error: `answers[${i}].questionIndex invalid` };
     }
-    if (!Number.isInteger(a.optionIndex) || (a.optionIndex as number) < 0 || (a.optionIndex as number) > 1000) {
+    if (
+      a.optionIndex !== null &&
+      a.optionIndex !== undefined &&
+      (!Number.isInteger(a.optionIndex) || (a.optionIndex as number) < 0 || (a.optionIndex as number) > 1000)
+    ) {
       return { ok: false, error: `answers[${i}].optionIndex invalid` };
     }
     if (typeof a.questionText !== "string" || a.questionText.length > MAX_TEXT) {

@@ -501,6 +501,7 @@ Deno.serve(async (req) => {
 
     const v = validateLead(body.name, body.email);
     if (!v.ok) {
+      console.error("validateLead failed:", v.error);
       return new Response(JSON.stringify({ error: "Invalid submission" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -508,6 +509,7 @@ Deno.serve(async (req) => {
     }
     const answersCheck = validateAnswers(body.answers);
     if (!answersCheck.ok) {
+      console.error("validateAnswers failed:", answersCheck.error);
       return new Response(JSON.stringify({ error: "Invalid submission" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

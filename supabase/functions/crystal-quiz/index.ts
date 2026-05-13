@@ -190,6 +190,7 @@ interface QuizSubmission {
 
 let crystalCache: { data: Crystal[]; ts: number } | null = null;
 const CACHE_MS = 5 * 60 * 1000;
+const GOOGLE_SHEETS_CONNECTOR_URL = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
 // ---------- Google Service Account JWT + Sheets append ----------
 
@@ -331,13 +332,15 @@ async function fetchCrystals(): Promise<Crystal[]> {
   if (crystalCache && Date.now() - crystalCache.ts < CACHE_MS) {
     return crystalCache.data;
   }
-  const apiKey = Deno.env.get("GOOGLE_SHEETS_API_KEY");
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
   const sheetId = Deno.env.get("GOOGLE_SHEETS_ID");
-  if (!apiKey || !sheetId) throw new Error("Missing Google Sheets credentials");
+  if (!lovableApiKey || !sheetId) throw new Error("Missing Google Sheets connector credentials");
 
   // Fetch first sheet, all values
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1:Z1000?key=${apiKey}`;
-  const res = await fetch(url);
+  const url = `${GOOGLE_SHEETS_CONNECTOR_URL}/spreadsheets/${sheetId}/values/A1:Z1000`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${lovableApiKey}` },
+  });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`Sheets API failed [${res.status}]: ${txt}`);

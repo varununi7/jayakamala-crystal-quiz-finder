@@ -333,13 +333,21 @@ async function fetchCrystals(): Promise<Crystal[]> {
     return crystalCache.data;
   }
   const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  const connectionApiKey =
+    Deno.env.get("GOOGLE_SHEETS_API_KEY_1") || Deno.env.get("GOOGLE_SHEETS_API_KEY");
   const sheetId = Deno.env.get("GOOGLE_SHEETS_ID");
-  if (!lovableApiKey || !sheetId) throw new Error("Missing Google Sheets connector credentials");
+  if (!lovableApiKey) throw new Error("Missing LOVABLE_API_KEY");
+  if (!connectionApiKey) throw new Error("Missing Google Sheets connector API key");
+  if (!sheetId) throw new Error("Missing GOOGLE_SHEETS_ID");
 
-  // Fetch first sheet, all values
+  // Fetch first sheet, all values, via the Google Sheets connector gateway
+  // (handles OAuth token refresh and avoids per-sheet share permissions).
   const url = `${GOOGLE_SHEETS_CONNECTOR_URL}/spreadsheets/${sheetId}/values/A1:Z1000`;
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${lovableApiKey}` },
+    headers: {
+      Authorization: `Bearer ${lovableApiKey}`,
+      "X-Connection-Api-Key": connectionApiKey,
+    },
   });
   if (!res.ok) {
     const txt = await res.text();

@@ -278,7 +278,12 @@ async function appendLeadToSheet(row: (string | number)[]): Promise<void> {
   });
   if (!res.ok) {
     const t = await res.text();
-    throw new Error(`Sheets append failed [${res.status}]: ${t}`);
+    let hint = "";
+    try {
+      const sa = JSON.parse(Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON") || "{}");
+      if (sa.client_email) hint = ` | Share the leads sheet with: ${sa.client_email}`;
+    } catch { /* ignore */ }
+    throw new Error(`Sheets append failed [${res.status}]: ${t}${hint}`);
   }
 }
 
